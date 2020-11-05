@@ -25,7 +25,7 @@ void initialize ()
    //  the whole memory as one free segment
    //
    // create a single segment descriptor
-    segmenttable = (Segment_t *) (mymemory);
+    segmenttable = (Segment_t *) malloc(sizeof(Segment_t));
    // initialise the segment
     segmenttable->allocated = FALSE;
     segmenttable->size = MAXMEM;
@@ -39,11 +39,19 @@ void initialize ()
 void * mymalloc ( size_t size )
 {
    printf ( "mymalloc> start\n");
-   Segment_t* SegmentD = segmenttable->next;
    Segment_t* Finder = findFree(segmenttable, size);
    // implement the mymalloc functionality
-   if (Finder != NULL && Finder->start == NULL){
-
+   if (Finder != NULL){
+      size_t NewFreeSize = Finder->size - size;
+      Segment_t* NewFree = (Segment_t *)malloc(sizeof(Segment_t));
+      Segment_t* OldAlloc = Finder;
+      OldAlloc->size = size;
+      insertAfter(OldAlloc,NewFree);
+      NewFree->size = NewFreeSize;
+      for (int i = 0; i < size; i++){
+         mymemory[MAXMEM-NewFree->size -size +i] = '\1';
+      }
+      return Finder->start;
    }
    return ;
 }
@@ -65,8 +73,7 @@ void mydefrag ( void ** ptrlist)
 Segment_t * findFree ( Segment_t * list, size_t size )
 {
    printf ( "findFree> start\n");
-   int i = 0;
-   for (i; i<MAXSEGMENTS; ++i) //searching free segment
+   for (int i = 0; i<MAXSEGMENTS; ++i) //searching free segment
    {    
       if (list->allocated==FALSE && list->size >= size)
       {
@@ -89,7 +96,10 @@ Segment_t * findFree ( Segment_t * list, size_t size )
 
 void insertAfter ( Segment_t * oldSegment, Segment_t * newSegment )
 {
-   oldSegment->next == newSegment;
+   oldSegment->next = newSegment;
+   oldSegment->allocated = TRUE;
+   newSegment->allocated = FALSE;
+   newSegment->start = oldSegment->start + oldSegment->size;
 }
 
 Segment_t * findSegment ( Segment_t * list, void * ptr )
@@ -126,9 +136,13 @@ void printsegmenttable()
    while (i<MAXSEGMENTS){ //nem NULL csak az elsö
       printf("\n");
       printf("\nSegment %d\n", i);
-      printsegmentdescriptor(segmenttable[i]);
+      printsegmentdescriptor(segmenttable);
+      segmenttable = segmenttable->next;
       ++i;
       if (segmenttable->next == NULL){
+         printf("\n");
+         printf("\nSegment %d\n", i);
+         printsegmentdescriptor(segmenttable);
          break;
       }
    }
