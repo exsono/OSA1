@@ -39,27 +39,58 @@ void initialize ()
 void * mymalloc ( size_t size )
 {
    printf ( "mymalloc> start\n");
-   Segment_t* Finder = findFree(segmenttable, size);
+   Segment_t* toAlloc = findFree(segmenttable, size);
+
    // implement the mymalloc functionality
-   if (Finder != NULL){
-      size_t NewFreeSize = Finder->size - size;
-      Segment_t* NewFree = (Segment_t *)malloc(sizeof(Segment_t));
-      Segment_t* OldAlloc = Finder;
-      OldAlloc->size = size;
-      insertAfter(OldAlloc,NewFree);
-      NewFree->size = NewFreeSize;
+   if (toAlloc != NULL){
+      Segment_t* FirstSeg = (Segment_t*) malloc(sizeof(Segment_t));
+   //creating new segment
+   //insert the segment to the list and set values
+      size_t LeftSize = toAlloc->size - size;
+      FirstSeg->start = toAlloc->start + size;
+      FirstSeg->size = LeftSize;
+      toAlloc->size = size;
+      insertAfter(toAlloc,FirstSeg);
       for (int i = 0; i < size; i++){
-         mymemory[MAXMEM-NewFree->size -size +i] = '\1';
+         mymemory[MAXMEM - LeftSize - size+i] = '\1';
       }
-      return Finder->start;
+      return toAlloc->start;
    }
-   return ;
+}
+void insertAfter ( Segment_t * oldSegment, Segment_t * newSegment )
+{
+   oldSegment ->next = newSegment;
+   oldSegment->allocated = TRUE;
+   newSegment->allocated = FALSE;
+
 }
 
 void myfree ( void * ptr )
 {
    printf ( "myfree> start\n");
-
+   int starter = 0;
+   Segment_t* result = findSegment(segmenttable, ptr);
+   //result is the pointer to the segment we want to free up
+   if (result != NULL){
+      result->allocated = FALSE;
+      result->next = segmenttable->next;
+      //setting values
+      for (int i = 0; i < MAXMEM; i++)
+         {
+         if (result->start == &mymemory[i])
+         {
+            starter = i;
+         }
+         }
+      for (int i = 0; i < result->size ; ++i){
+         mymemory[i + starter] = '\0';
+      }
+   }
+   else
+   {
+      printf("Not found");
+   }
+   
 }
 
 void mydefrag ( void ** ptrlist)
@@ -73,37 +104,36 @@ void mydefrag ( void ** ptrlist)
 Segment_t * findFree ( Segment_t * list, size_t size )
 {
    printf ( "findFree> start\n");
-   for (int i = 0; i<MAXSEGMENTS; ++i) //searching free segment
+   for (int i = 0; i<MAXSEGMENTS; ++i) //searching for free segment
    {    
       if (list->allocated==FALSE && list->size >= size)
       {
          return list; //found the free segment
       }
-      else
+      else if(list==NULL)
       {
-         list = list->next; //going for the next segment
-         if (list==NULL){
-            return NULL;//the next segment does not exist
-         }
-         else{
-            continue; //im not sure if i need this continue
-         }             //as it should continue without anyways
-      }   
+         return NULL;//the next segment does not exist
+      } 
+      list = list->next; //going for the next segment
    }
    return NULL;//over max segment, memeory is full or 
                //not enough free space in any segments
 }
 
-void insertAfter ( Segment_t * oldSegment, Segment_t * newSegment )
-{
-   oldSegment->next = newSegment;
-   oldSegment->allocated = TRUE;
-   newSegment->allocated = FALSE;
-   newSegment->start = oldSegment->start + oldSegment->size;
-}
 
-Segment_t * findSegment ( Segment_t * list, void * ptr )
-{
+Segment_t * findSegment(Segment_t * list, void * ptr )
+{  //had to declare this function in mymemory.h
+   for (int i=0; i < MAXSEGMENTS ; i++){
+	if ( list->start == ptr){ //correct segment
+		return list;
+	   }	
+   else if (list->next == NULL){//no more segments to check
+            printf("Could not find match\n");
+      return NULL;
+      }
+      list = list->next; //going for the next segment
+   }
+   return NULL; //segment does not exist
 }
 
 int isPrintable ( int c )
@@ -113,7 +143,7 @@ int isPrintable ( int c )
    return 0 ;
 }
 
-void printmemory ()
+void printmemory () //prints the whole memory
 {
    int i;
    int j;
@@ -130,10 +160,10 @@ void printmemory ()
     }
 }
 
-void printsegmenttable()
+void printsegmenttable()//prints the whole segmentation table
 {
    int i = 0;
-   while (i<MAXSEGMENTS){ //nem NULL csak az elsö
+   while (i<MAXSEGMENTS){
       printf("\n");
       printf("\nSegment %d\n", i);
       printsegmentdescriptor(segmenttable);
@@ -153,4 +183,6 @@ void printsegmentdescriptor ( Segment_t * descriptor )
       printf ( "\tallocated = %s\n" , (descriptor->allocated == FALSE ? "FALSE" : "TRUE" ) ) ;
       printf ( "\tstart     = %p\n" , descriptor->start ) ;
       printf ( "\tsize      = %lu\n", descriptor->size  ) ;
+      printf ( "\tnext      = %p\n", descriptor->next );
+
 }

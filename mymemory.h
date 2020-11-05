@@ -44,6 +44,8 @@ void        mydefrag   ( void ** ) ;
 // forward references, managing segmentation table
 Segment_t * findFree    ( Segment_t *, size_t      ) ;
 void        insertAfter ( Segment_t *, Segment_t * ) ;
+Segment_t * findSegment (Segment_t *, void *       ) ;
+
 
 // forward references, helper functions
 int isPrintable ( int c ) ;
